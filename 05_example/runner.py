@@ -84,7 +84,7 @@ def build_layout():
 
 # CREATE THE APP + assign layout
 # ======================================================================================================================
-app = Dash(external_stylesheets=[dbc.themes.BOOTSTRAP])
+app = Dash(external_stylesheets=[dbc.themes.SLATE])
 app.layout = build_layout()
 
 if __name__ == "__main__":
