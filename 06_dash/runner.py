@@ -23,9 +23,9 @@ dummy_df.rename(columns={'index': 'Rating'}, inplace=True)
 # CALLBACKS
 # ======================================================================================================================
 @callback(
-    Output("fade", "is_in"),
-    [Input("fade-button", "n_clicks")],
-    [State("fade", "is_in")],
+    Output(f'fade_desc', "is_in"),
+    [Input(f'btn_desc', "n_clicks")],
+    [State(f'fade_desc', "is_in")],
 )
 def toggle_description_fade(n, is_in):
     if not n:
@@ -37,8 +37,14 @@ def toggle_description_fade(n, is_in):
 # Standard components
 # ======================================================================================================================
 def build_dash_graph(id: str):
-    style = {'width': '60vh', 'height': '60vh'}
-    return dcc.Graph(id=id, style=style)
+    style = {'width': '72vh', 'height': '60vh'}
+    colors = {'background': '#262626', 'text': '#cc7a00'}
+
+    figure = {'layout': {'plot_bgcolor': colors['background'],
+                         'paper_bgcolor': colors['background'],
+                         'font': {'color': colors['text']}}}
+
+    return dcc.Graph(id=id, style=style, figure=figure)
 
 
 def build_dash_table(id: str, data):
@@ -51,50 +57,93 @@ def build_dash_table(id: str, data):
                                              'color': 'white',
                                              'border': '1px black'},
                                  style_data_conditional=[{'if': {'state': 'active'},
-                                                          'backgroundColor': 'rgba(0, 116, 217, 0.3)',
-                                                          'border': '1px solid rgb(0, 116, 217)'
+                                                          'backgroundColor': '#cc7a00',
+                                                          'border': '1px solid #cc7a00'
                                                           }])
 
     return table
 
 
-# # HELPERS = callback
-# # ======================================================================================================================
-# @callback(Output('df_data', 'data'), Input(f'run-button', 'value'))
-# def generate_numbers(n_clicks: int):
-#     n = 10
-#     numbers = np.random.uniform(low=-10, high=15, size=(n,n))
-#     data = {str(x): numbers[x] for x in range(0, n)}
-#     df = pd.DataFrame.from_dict(data, orient='index')
-#     return df.to_json()
-#
-#
-# @callback(Output('table-average', 'data'), Input('df_data', 'data'))
-# def update_table(df_string: str):
-#     df = pd.read_json(df_string)
-#     averages = {x : np.mean(df[x]) for x in df.columns}
-#     df_averages = pd.DataFrame.from_dict(averages, orient='index')
-#     return df_averages.to_dict("records")
-#
-# @callback(Output(f'tbl_out', 'children'),
-#           [Input(f'table-average', 'active_cell'), Input('df_data', 'data')])
-# def update_graphs(active_cell, df_serialised):
-#     if active_cell:
-#         # Take the row
-#         row = active_cell['row']
-#
-#         # Deserialise the data into a dataframe
-#         df = pd.read_json(df_serialised)
-#         data = df[row]
-#
-#         output = data.values.tolist()
-#
-#         # Graph doesnt quite work - don't know why
-#         # fig = go.Bar(x=data.index.to_list(), y=data.values.tolist())
-#
-#         return output
-#     else:
-#         return "Click on a cell"
+# SUBSECTIONS
+# ======================================================================================================================
+# Input card
+def build_card_user_inputs(id: str):
+    date_picker = dcc.DatePickerSingle(id=f'date_input',
+                                       initial_visible_month=datetime.date.today(),
+                                       display_format='DD/MM/YYYY',
+                                       date=datetime.date.today(),
+                                       style={'font-size': '6px', 'display': 'inline-block'})
+
+    input_tabs = dbc.Tabs([dbc.Tab(id=f'tab_input_buckets', label='Buckets'),
+                           dbc.Tab(id=f'tab_input_costs', label='FVA Costs')])
+
+    currency_drop = dbc.DropdownMenu(label="Currency", id=f'select-currency',
+                                     children=[dbc.DropdownMenuItem("GBP"),
+                                               dbc.DropdownMenuItem("EUR"),
+                                               dbc.DropdownMenuItem("USD")])
+
+    body = dbc.CardBody([html.H6("USER SELECTIONS: INPUTS"),
+                         html.Hr(),
+                         dbc.Row([dbc.Col(dbc.Label('Select CoB', html_for=f'date_input'), width=6),
+                                  dbc.Col(date_picker, width=6)], justify="left", align="center"),
+                         dbc.Row([dbc.Col(dbc.Label('Base Currency', html_for=f'select-currency')),
+                                  dbc.Col(currency_drop, width=6)], justify="left", align="center"),
+                         html.Br(),
+                         dbc.Row(input_tabs),
+                         html.Hr(),
+                         dbc.Row([dbc.Button('Run Model', size='md', id=f'btn_run_model')])])
+    return dbc.Card([body], id=id, style={"margin-left": "15px"})
+
+
+# Analysis card
+def build_card_user_analysis(id: str):
+    body = dbc.CardBody([html.H6("USER SELECTIONS: ANALYSIS"),
+                         html.Hr()])
+    return dbc.Card([body], id=id, style={"margin-left": "15px"})
+
+# Status card
+def build_card_app_status(id: str):
+    body = dbc.CardBody([html.H6("APP STATUS"),
+                         html.Hr()])
+    return dbc.Card([body], id=id, style={"margin-left": "15px"})
+
+
+# Viewer card
+def build_card_viewer(id: str):
+    # Build tabs
+    tab_gbp_content = [html.Br(),
+                       dbc.Row([dbc.Col(build_dash_table(id=f'tbl_gbp_fin', data=dummy_df.to_dict('records'))),
+                                dbc.Col(build_dash_table(id=f'tbl_gbp_nonfin', data=dummy_df.to_dict('records')))]),
+                       html.Br(),
+                       dbc.Row([dbc.Col(build_dash_graph(id=f'scatter_gbp_fin')),
+                                dbc.Col(build_dash_graph(id=f'scatter_gbp_nonfin'))])]
+
+    tab_eur_content = [html.Br(),
+                       dbc.Row([dbc.Col(build_dash_table(id=f'tbl_eur_fin', data=dummy_df.to_dict('records'))),
+                                dbc.Col(build_dash_table(id=f'tbl_eur_nonfin', data=dummy_df.to_dict('records')))]),
+                       html.Br(),
+                       dbc.Row([dbc.Col(build_dash_graph(id=f'scatter_eur_fin')),
+                                dbc.Col(build_dash_graph(id=f'scatter_eur_nonfin'))])]
+
+    tab_usd_content = [html.Br(),
+                       dbc.Row([dbc.Col(build_dash_table(id=f'tbl_usd_fin', data=dummy_df.to_dict('records'))),
+                                dbc.Col(build_dash_table(id=f'tbl_usd_nonfin', data=dummy_df.to_dict('records')))]),
+                       html.Br(),
+                       dbc.Row([dbc.Col(build_dash_graph(id=f'scatter_usd_fin')),
+                                dbc.Col(build_dash_graph(id=f'scatter_usd_nonfin'))])]
+
+    # Combine into a list
+    viewer_tabs = dbc.Tabs([dbc.Tab(tab_gbp_content, id=f'tab_gbp', label='GBP'),
+                            dbc.Tab(tab_eur_content, id=f'tab_eur', label='EUR'),
+                            dbc.Tab(tab_usd_content, id=f'tab_usd', label='USD'),
+                            dbc.Tab(id=f'tab_usd_muni', label='USD Muni'),
+                            dbc.Tab(id=f'tab_custom', label='Custom')])
+
+    body = dbc.CardBody([html.H6("INDEX VIEWER"),
+                         html.Hr(),
+                         viewer_tabs])
+
+    return dbc.Card([body], id=id, style={"margin-left": "15px"})
 
 
 # HELPERS = layout
@@ -103,57 +152,19 @@ def build_dash_table(id: str, data):
 def build_layout():
     # Separate components : Description (Fade)
     # ------------------------------------------------------------------------------------------------------------------
-    description_button = dbc.Button("Description", id="fade-button", size="sm", className="mb-3", n_clicks=0)
-    description_text = html.P(
+    desc_button = dbc.Button("Description", id=f'btn_desc', size="sm", n_clicks=0)
+    desc_label = dbc.Label(
         "Provides an aggregated view of the main broad corporate bond indices - GBP (UC00), EUR (ER00) and USD (US00).",
-        className="description-text")
-    description_fade = dbc.Fade(description_text, id="fade", is_in=False, appear=False)
-
-    description_row = html.Div(dbc.Row([dbc.Col(description_button, width='auto'),
-                                        dbc.Col(description_fade)]))
-
-    # Separate components : User Selections (Inputs)
-    # ------------------------------------------------------------------------------------------------------------------
-    user_selections_inputs = [html.H6('USER SELECTIONS: Inputs'),
-                              dbc.Row([dbc.Col(html.P('CoB Date'), width=4),
-                                       dbc.Col(dcc.DatePickerSingle(id=f'date-selector',
-                                                                    initial_visible_month=datetime.date.today(),
-                                                                    display_format='DD/MM/YYYY',
-                                                                    date=datetime.date.today()), width=8)])]
+        html_for=f'btn_desc')
+    desc_fade = dbc.Fade(desc_label, id=f'fade_desc', is_in=False, appear=False)
+    description_row = html.Div(dbc.Row([dbc.Col(desc_button, width='auto'),
+                                        dbc.Col(desc_fade)], justify="left", align="center"),
+                               style={"margin-left": "15px"})
 
     # Separate components : User Selections (Inputs)
     # ------------------------------------------------------------------------------------------------------------------
-    user_selections_analysis = [html.H6('USER SELECTIONS: Analysis')]
-
-    # Separate components : Viewer
-    # ------------------------------------------------------------------------------------------------------------------
-    tab_gbp_content = [html.Br(),
-                       dbc.Row([dbc.Col(build_dash_table(id='tbl-gbp-fin', data=dummy_df.to_dict('records'))),
-                                dbc.Col(build_dash_table(id='tbl-gbp-nonfin', data=dummy_df.to_dict('records')))]),
-                       html.Br(),
-                       dbc.Row([dbc.Col(build_dash_graph(id='scatter-gbp-fin')),
-                                dbc.Col(build_dash_graph(id='scatter-gbp-nonfin'))])]
-
-    tab_eur_content = [html.Br(),
-                       dbc.Row([dbc.Col(build_dash_table(id='tbl-eur-fin', data=dummy_df.to_dict('records'))),
-                                dbc.Col(build_dash_table(id='tbl-eur-nonfin', data=dummy_df.to_dict('records')))]),
-                       html.Br(),
-                       dbc.Row([dbc.Col(build_dash_graph(id='scatter-eur-fin')),
-                                dbc.Col(build_dash_graph(id='scatter-eur-nonfin'))])]
-
-    tab_usd_content = [html.Br(),
-                       dbc.Row([dbc.Col(build_dash_table(id='tbl-usd-fin', data=dummy_df.to_dict('records'))),
-                                dbc.Col(build_dash_table(id='tbl-usd-nonfin', data=dummy_df.to_dict('records')))]),
-                       html.Br(),
-                       dbc.Row([dbc.Col(build_dash_graph(id='scatter-usd-fin')),
-                                dbc.Col(build_dash_graph(id='scatter-usd-nonfin'))])]
-
-    viewer_tabs = dbc.Tabs([dbc.Tab(tab_gbp_content, id='tab-gbp', label='GBP'),
-                            dbc.Tab(tab_eur_content, id='tab-eur', label='EUR'),
-                            dbc.Tab(tab_usd_content, id='tab-usd', label='USD')])
-
-    viewer = [html.H6('INDEX VIEWER'),
-              dbc.Row(viewer_tabs)]
+    user_selections_inputs = [dbc.Row(dbc.Card()),
+                              dbc.Row(dbc.Card())]
 
     # Combining the components
     # ------------------------------------------------------------------------------------------------------------------
@@ -163,29 +174,14 @@ def build_layout():
 
     # Constructing the overall layout
     # ------------------------------------------------------------------------------------------------------------------
-    main_layout = [dbc.Row(children=section_top),
+    main_layout = [dbc.Row(section_top),
                    html.Br(),
-                   dbc.Row([dbc.Col([dbc.Row(user_selections_inputs),
+                   dbc.Row([dbc.Col([dbc.Row([build_card_user_inputs(f'card_inputs')]),
                                      html.Br(),
-                                     dbc.Row(user_selections_analysis)], width=2),
-                            dbc.Col(viewer, width=10)])]
-
-    # # Define components
-    # parameters = [html.H3('Random App'),
-    #               dbc.Label('Select date', html_for=f'date-selector'),
-    #               dbc.Col(dcc.DatePickerSingle(id=f'date-selector',
-    #                                            initial_visible_month=datetime.date.today(),
-    #                                            display_format='DD/MM/YYYY',
-    #                                            date=datetime.date.today())),
-    #               dbc.Label('Run averages', html_for=f'run-button'),
-    #               dbc.Button("Run", size='sm', id=f'run-button', n_clicks=0)]
-    #
-    # output = [html.Hr(),
-    #           dbc.Label('Table: average', html_for=f'table-average'),
-    #           dash_table.DataTable(id=f'table-average', data = dummy_df.to_dict("records")),
-    #           dbc.Alert(id='tbl_out'),
-    #           html.Hr(),
-    #           dcc.Graph(id=f'bar_chart')]
+                                     dbc.Row([build_card_user_analysis(f'card_analysis')]),
+                                     html.Br(),
+                                     dbc.Row([build_card_app_status(f'card_status')])], width=2),
+                            dbc.Col([build_card_viewer(id=f'card_viewer')], width=10)])]
 
     # Define the data store
     dcc_stores = [dcc.Store(id=f'df_data')]
